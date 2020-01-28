@@ -35,7 +35,7 @@
     "pilet": "./lib/pilet-cli.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node build.js",
     "test": "echo \"Error: run tests from root\" && exit 1"
   },
   "devDependencies": {
@@ -50,7 +50,8 @@
     "@types/request": "^2.48.1",
     "@types/rimraf": "2.0.2",
     "@types/tar": "^4.0.0",
-    "@types/yargs": "^13.0.2"
+    "@types/yargs": "^13.0.2",
+    "@zeit/ncc": "^0.21.0"
   },
   "dependencies": {
     "chalk": "^2.4.2",
