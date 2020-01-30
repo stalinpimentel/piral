@@ -18,7 +18,7 @@
     "watch:demo-cross": "piral debug src/samples/sample-cross-fx/src/index.html",
     "build:demo-cross": "piral build src/samples/sample-cross-fx/src/index.html --target dist/demo-cross/index.html",
     "watch:demo-core": "piral debug src/samples/sample-piral-core/src/index.html",
-    "build:demo-core": "piral build src/samples/sample-piral-core/src/index.html --target dist/demo-core/index.html --type release",
+    "build:demo-core": "node ./src/packages/piral-cli/lib/piral-cli.js build src/samples/sample-piral-core/src/index.html --target dist/demo-core/index.html --type release",
     "watch:demo-full": "piral debug src/samples/sample-piral/src/index.html",
     "build:demo-full": "piral build src/samples/sample-piral/src/index.html --target dist/demo-full/index.html",
     "lint": "tslint -c tslint.json 'src/**/*.{ts,tsx}' --project tsconfig.json",

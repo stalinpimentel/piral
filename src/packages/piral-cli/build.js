@@ -30,6 +30,15 @@ function createDirectory(targetDir) {
   }, initDir);
 }
 
+function copyFiles(assets, source, files) {
+  for (const file of files) {
+    const p = require.resolve(`${source}/${file}`);
+    assets[file] = {
+      source: fs.readFileSync(p),
+    };
+  }
+}
+
 require('@zeit/ncc')('./src/index.ts', {
   cache: false,
   externals: ['typescript', 'deasync'],
@@ -44,6 +53,9 @@ require('@zeit/ncc')('./src/index.ts', {
 }).then(({ code, assets }) => {
   const target = path.resolve(__dirname, 'lib', 'bundle');
   createDirectory(target);
+  copyFiles(assets, 'parcel-bundler/src/builtins', ['helpers.min.js', 'helpers.js', 'prelude.js', 'prelude2.js']);
+
+  code = code.split("__dirname, '../builtins/").join("__dirname, '");
 
   console.log('Writing index.js ...');
   fs.writeFileSync(path.resolve(target, 'index.js'), code, 'utf8');
