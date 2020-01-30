@@ -1,6 +1,6 @@
 {
   "name": "piral-ember",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "description": "Plugin for integrating Ember.js components in Piral.",
   "keywords": [
     "piral",
@@ -18,6 +18,7 @@
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
+  "sideEffects": false,
   "files": [
     "lib",
     "src"

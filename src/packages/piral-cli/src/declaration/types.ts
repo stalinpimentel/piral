@@ -7,6 +7,7 @@ declare module 'typescript' {
   interface Symbol {
     id?: number;
     parent?: ts.Symbol;
+    target?: any;
   }
 
   interface Type {
@@ -19,14 +20,28 @@ declare module 'typescript' {
   }
 }
 
+export interface DeclVisitorContext {
+  modules: Record<string, TypeRefs>;
+  checker: ts.TypeChecker;
+  refs: TypeRefs;
+  ids: Array<number>;
+  usedImports: Array<string>;
+  availableImports: Array<string>;
+}
+
 export type TypeRefs = Record<string, TypeModel>;
 
 export interface WithTypeArgs {
   readonly types: Array<TypeModel>;
 }
 
+export interface WithTypeComments {
+  readonly comment?: string;
+}
+
 export type TypeModel =
   | TypeModelString
+  | TypeMemberModel
   | TypeModelProp
   | TypeModelBoolean
   | TypeModelNumber
@@ -58,19 +73,21 @@ export type TypeModel =
   | TypeModelNonPrimitive
   | TypeModelTuple
   | TypeModelFunction
-  | TypeModelRef;
+  | TypeModelRef
+  | TypeModelAlias;
 
-export interface TypeModelProp {
+export interface TypeModelProp extends WithTypeComments {
   readonly name: string;
   readonly optional: boolean;
-  readonly comment?: string;
   readonly kind: 'prop';
   readonly valueType: TypeModel;
+  readonly id: number;
 }
 
 export interface TypeModelRef extends WithTypeArgs {
   readonly kind: 'ref';
   readonly refName: string;
+  readonly external?: ts.Type;
 }
 
 export interface TypeModelAny {
@@ -106,10 +123,10 @@ export interface TypeModelFunctionParameter {
   readonly type: TypeModel;
 }
 
-export interface TypeModelEnum {
+export interface TypeModelEnum extends WithTypeComments {
   readonly kind: 'enum';
   readonly comment?: string;
-  readonly values: Array<TypeModel>;
+  readonly values: Array<TypeMemberModel>;
 }
 
 export interface TypeModelBigInt {
@@ -131,9 +148,16 @@ export interface TypeModelBooleanLiteral {
   readonly value: boolean;
 }
 
-export interface TypeModelEnumLiteral {
+export interface TypeModelEnumLiteral extends WithTypeComments {
   readonly kind: 'enumLiteral';
-  readonly values: TypeModel[];
+  readonly const: boolean;
+  readonly values: Array<TypeMemberModel>;
+}
+
+export interface TypeMemberModel extends WithTypeComments {
+  readonly kind: 'member';
+  readonly name: string;
+  readonly value: TypeModel;
 }
 
 export interface TypeModelBigIntLiteral {
@@ -208,16 +232,21 @@ export interface TypeModelUnidentified {
   readonly kind: 'unidentified';
 }
 
-export interface TypeModelObject extends WithTypeArgs {
+export interface TypeModelObject extends WithTypeArgs, WithTypeComments {
   readonly kind: 'object';
-  readonly comment?: string;
   readonly props: Array<TypeModelProp>;
   readonly calls: Array<TypeModelFunction>;
   readonly indices: Array<TypeModelIndex>;
+  readonly extends: Array<TypeModelRef>;
 }
 
 export interface TypeModelTuple extends WithTypeArgs {
   readonly kind: 'tuple';
+}
+
+export interface TypeModelAlias extends WithTypeArgs, WithTypeComments {
+  readonly kind: 'alias';
+  readonly child: TypeModel;
 }
 
 export type TypeModelKinds = TypeModel['kind'];
