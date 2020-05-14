@@ -1,16 +1,14 @@
 import { dirname, join, resolve } from 'path';
 import { readKrasConfig, krasrc, buildKrasWithCli, defaultConfig } from 'kras';
+import { callPiralDebug } from '../bundler';
 import { LogLevels } from '../types';
 import {
   retrievePiletsInfo,
   retrievePiralRoot,
-  setStandardEnvs,
   openBrowser,
   checkCliCompatibility,
   reorderInjectors,
   notifyServerOnline,
-  patchModules,
-  setupBundler,
   removeDirectory,
   setLogLevel,
   progress,
@@ -94,29 +92,19 @@ export async function debugPiral(baseDir = process.cwd(), options: DebugPiralOpt
     await removeDirectory(cache);
   }
 
-  if (optimizeModules) {
-    progress('Preparing modules ...');
-    await patchModules(root, ignored);
-  }
-
-  setStandardEnvs({
+  const bundler = await callPiralDebug({
     root,
-    debugPiral: true,
-    dependencies: externals,
     piral: name,
-  });
-
-  const bundler = setupBundler({
-    type: 'piral',
+    optimizeModules,
+    hmr,
+    scopeHoist,
+    autoInstall,
+    cacheDir: cache,
+    externals,
+    publicUrl,
     entryFiles,
-    config: {
-      publicUrl,
-      logLevel,
-      cacheDir: cache,
-      scopeHoist,
-      hmr,
-      autoInstall,
-    },
+    logLevel,
+    ignored,
   });
 
   const injectorConfig = {

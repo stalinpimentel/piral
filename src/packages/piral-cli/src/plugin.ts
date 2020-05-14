@@ -1,8 +1,8 @@
 import { readdir, statSync } from 'fs';
 import { join, resolve, basename } from 'path';
-import * as api from './api';
+import { log } from './common';
 import { resolvers } from './resolvers';
-import { CliPlugin } from './types';
+import { inject } from './inject';
 
 function getGlobalPackageDir() {
   for (const resolver of resolvers) {
@@ -20,18 +20,29 @@ function getLocalPackageDir() {
   return resolve(__dirname, '..', '..');
 }
 
+function isPluginDirectory(dir: string) {
+  try {
+    return statSync(dir).isDirectory();
+  } catch (err) {
+    log('generalDebug_0003', `Could not load the plugin at "${dir}": ${err}`);
+    return false;
+  }
+}
+
 function getAllPlugins(rootDir: string): Promise<Array<string>> {
   return new Promise<Array<string>>(resolve => {
     if (rootDir) {
+      log('generalDebug_0003', `Getting plugins from dir "${rootDir}" ...`);
       readdir(rootDir, (_, files) => {
         const prefix = 'piral-cli-';
         const pluginPaths = (files || [])
           .filter(m => m.startsWith(prefix) && m.length > prefix.length)
           .map(m => join(rootDir, m))
-          .filter(m => statSync(m).isDirectory());
+          .filter(isPluginDirectory);
         resolve(pluginPaths);
       });
     } else {
+      log('generalDebug_0003', `Skipping plugins from dir "${rootDir}" ...`);
       resolve([]);
     }
   });
@@ -59,14 +70,6 @@ export async function loadPlugins() {
   const allPlugins = [...localPlugins, ...globalPlugins.filter(plugin => includeUnique(localPlugins, plugin))];
 
   for (const pluginPath of allPlugins) {
-    try {
-      const plugin: CliPlugin = require(pluginPath);
-
-      if (typeof plugin === 'function') {
-        plugin(api);
-      }
-    } catch (ex) {
-      console.warn(`Failed to load plugin from "${pluginPath}": ${ex}`);
-    }
+    inject(pluginPath);
   }
 }

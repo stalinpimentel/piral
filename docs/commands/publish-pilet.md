@@ -49,6 +49,13 @@ Sets the potential API key to send to the service.
 - Type: `string`
 - Default: `""`
 
+### `--ca-cert`
+
+Sets a custom certificate authority to use, if any.
+
+- Type: `string`
+- Default: `undefined`
+
 ### `--log-level`
 
 Sets the log level to use (1-5).
@@ -70,6 +77,14 @@ Performs a fresh build, then packages and finally publishes the pilet.
 
 - Type: `boolean`
 - Default: `true`
+
+### `--schema`
+
+Sets the schema to be used when making a fresh build of the pilet.
+
+- Type: `string`
+- Choices: `"v0"`, `"v1"`
+- Default: `"v1"`
 
 ### `--base`
 

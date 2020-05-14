@@ -319,6 +319,80 @@ export function packageJsonMissingVersion_0022(): QuickMessage {
 }
 
 /**
+ * @kind Warning
+ *
+ * @summary
+ * Cannot pack the package.
+ *
+ * @abstract
+ * For updating a Piral instance the packages have to be installed. Otherwise,
+ * it is impossible for the Piral CLI to detect what packages need to be updated
+ * and which ones can remain at their current version.
+ *
+ * @see
+ * - [NPM Install](https://docs.npmjs.com/cli/install)
+ *
+ * @example
+ * Check that the package is indeed installed:
+ *
+ * ```sh
+ * cat node_modules/{missing-package}/package.json
+ * ```
+ *
+ * The displayed content should look similar to:
+ *
+ * ```json
+ * {
+ *   "name": "missing package",
+ *   "version": "1.0.0",
+ *   "dependencies": {},
+ *   "devDependencies": {}
+ * }
+ * ```
+ *
+ * The exact values do not matter much, but rather that the file is found at all.
+ */
+export function packageNotInstalled_0023(name: string): QuickMessage {
+  return [LogLevels.warning, '0023', `Cannot find the package "${name}". Skipping.`];
+}
+
+/**
+ * @kind Error
+ *
+ * @summary
+ * The desired version is invalid.
+ *
+ * @abstract
+ * For updating a Piral instance the provided version must be a valid version
+ * identifier (e.g., 0.10.0) or a valid tag (e.g., latest).
+ *
+ * Before an update is performed the desired version is checked with the available
+ * versions. If no release for the given version was found then an error is emitted.
+ *
+ * @see
+ * - [StackOverflow Listing NPM Versions](https://stackoverflow.com/questions/41415945/how-to-list-all-versions-of-an-npm-module)
+ *
+ * @example
+ * Check that the version is valid:
+ *
+ * ```sh
+ * npm show piral-cli version --tag 0.10.10
+ * ```
+ *
+ * The result has to be a valid version answer. In the given example there is no
+ * response, so it is empty. A valid response appear for:
+ *
+ * ```sh
+ * npm show piral-cli version --tag 0.10.9
+ * ```
+ *
+ * Here the answer is 0.10.9.
+ */
+export function packageVersionInvalid_0024(version: string): QuickMessage {
+  return [LogLevels.error, '0024', `The given package version "${version}" is invalid.`];
+}
+
+/**
  * @kind Error
  *
  * @summary
@@ -847,7 +921,7 @@ export function cannotResolveDependency_0053(name: string, rootDir: string): Qui
  * Always specify the URL via the `--url` provider.
  *
  * ```sh
- * pilet publish --url https://feed.piral.io/api/v1/pilet/sample
+ * pilet publish --url https://feed.piral.cloud/api/v1/pilet/sample
  * ```
  */
 export function missingPiletFeedUrl_0060(): QuickMessage {
@@ -1078,7 +1152,11 @@ export function failedHttpPost_0065(error: string): QuickMessage {
  * ```
  */
 export function unsuccessfulHttpPost_0066(statusText: string, statusCode: number, error: string): QuickMessage {
-  return [LogLevels.warning, '0066', `Failed to upload: ${statusText} (${statusCode}). ${error}`];
+  return [
+    LogLevels.warning,
+    '0066',
+    `Failed to upload: ${statusText} (${statusCode}). Received: ${JSON.stringify(error)}`,
+  ];
 }
 
 /**
@@ -1328,6 +1406,57 @@ export function packageJsonMissing_0075(): QuickMessage {
  * @kind Error
  *
  * @summary
+ * The declaration could not be generated.
+ *
+ * @abstract
+ * A Piral instance emulator package consists of a pre-bundled version of the
+ * app shell, its package.json, files for scaffolding, and generated typings.
+ *
+ * The typings are generated to provide the smallest bundle possible, together
+ * with accurate typing that does not only reflect the truly available subset
+ * for the pilets, but also custom API additions and more.
+ *
+ * Our way of generating requires a custom tool called dets, which is a TS
+ * declaration bundler. It can do more than just spit out *.d.ts file and
+ * somehow merge them together - it actually performs this on the real AST
+ * of the found application. This way any interface merging is respected,
+ * as well as not available APIs omitted.
+ *
+ * When the declaration cannot be created its either the fault of a missing
+ * configuration or a bug in dets. Make sure to have an appropriate package.json
+ * with the right configuration. The tsconfig.json is not used, so any
+ * custom setting there may also be indicator of an issue.
+ *
+ * @see
+ * - [dets](https://github.com/FlorianRappl/dets)
+ * - [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree)
+ *
+ * @example
+ * The declaration can be build independently:
+ *
+ * ```sh
+ * piral declaration
+ * ```
+ *
+ * If an error occurs check first if the package.json contains a valid "app"
+ * field pointing to the HTML. The HTML requires a script reference to the
+ * entry point of the appplication, e.g.,
+ *
+ * ```html
+ * <script src="./index.tsx"></script>
+ * ```
+ *
+ * The TypeScript declaration generator will take all files as input to
+ * gather all required information for constructing the API declaration.
+ */
+export function declarationCouldNotBeGenerated_0076(rootDir: string, error: Error): QuickMessage {
+  return [LogLevels.error, '0076', `Could not create the declaration in "${rootDir}". Error: ${error}`];
+}
+
+/**
+ * @kind Error
+ *
+ * @summary
  * The validation process failed.
  *
  * @abstract
@@ -1566,8 +1695,42 @@ export function failedToOpenBrowser_0070(error: string): QuickMessage {
  * pilet build --schema v0
  * ```
  */
-export function invalidSchemaVersion_0071(schemaVersion: string): QuickMessage {
-  return [LogLevels.warning, '0071', `Found invalid pilet schema version "${schemaVersion}". Expected "v0" or "v1".`];
+export function invalidSchemaVersion_0071(schemaVersion: string, schemas: Array<string>): QuickMessage {
+  const s = schemas.map(m => `"${m}"`).join(', ');
+  return [LogLevels.warning, '0071', `Found invalid pilet schema version "${schemaVersion}". Available schemas: ${s}.`];
+}
+
+/**
+ * @kind Error
+ *
+ * @summary
+ * The provided bundler is not available.
+ *
+ * @abstract
+ * Piral allows you to set up your own tooling for building and debugging. This
+ * is a powerful concept. By default, the Parcel bundler is used. Alternatives
+ * include Webpack and Rollup.
+ *
+ * In case where multiple bundlers are installed the first one is picked. This
+ * may not be what you want. In this scenario you can override the selection by
+ * explicitly picking a bundler name (e.g., "parcel"). If, for some reason, the
+ * name does not correspond to one of the currently installed bundlers the
+ * bundler missing error appears.
+ *
+ * @see
+ * - [Parcel](https://parceljs.org)
+ * - [Pluggable bundlers](https://docs.piral.io/reference/pluggable-bundlers)
+ *
+ * @example
+ * Use the following command to make the parcel bundler available:
+ *
+ * ```sh
+ * npm i piral-cli-parcel --save-dev
+ * ```
+ */
+export function bundlerMissing_0072(bundlerName: string, installed: Array<string>): QuickMessage {
+  const s = installed.map(m => `"${m}"`).join(', ');
+  return [LogLevels.error, '0072', `Cannot find bundler "${bundlerName}". Installed bundlers: ${s}.`];
 }
 
 /**
@@ -1688,4 +1851,53 @@ export function apiValidateRunInvalid_0203(type: string): QuickMessage {
  */
 export function apiPatchInvalid_0204(name: string): QuickMessage {
   return [LogLevels.warning, '0204', `Invalid argument for "${name}" - nothing installed.`];
+}
+
+/**
+ * @kind Warning
+ *
+ * @summary
+ * The plugin could not be loaded.
+ *
+ * @abstract
+ * This warning is shown when a found plugin could not be loaded during the startup of
+ * the Piral CLI. This could be an incompatible plugin or no plugin at all.
+ *
+ * Make sure that this is a valid plugin.
+ *
+ * Our recommendation is to get in touch with the author of the plugin if you think that
+ * this is a mistake and happened due to regression.
+ *
+ * @see
+ * - [CLI Plugin Definition](https://www.npmjs.com/package/piral-cli#plugins)
+ *
+ * @example
+ * ...
+ */
+export function pluginCouldNotBeLoaded_0205(pluginPath: string, ex: any): QuickMessage {
+  return [LogLevels.warning, '0205', `Failed to load plugin from "${pluginPath}": ${ex}`];
+}
+
+/**
+ * @kind Warning
+ *
+ * @summary
+ * An invalid value for the given argument was supplied.
+ *
+ * @abstract
+ * This warning indicates that a Piral CLI bundler plugin is not working as intended.
+ * Usually, * you should not see this as a user, but rather as a developer testing a
+ * Piral CLI plugin before publishing it.
+ *
+ * If you see this warning as a user make sure to file an issue at the relevant plugin's
+ * repository or issue tracker.
+ *
+ * @see
+ * - [Semantic Versioning](https://semver.org)
+ *
+ * @example
+ * ...
+ */
+export function apiBundlerInvalid_0206(name: string): QuickMessage {
+  return [LogLevels.warning, '0206', `Invalid argument for "${name}" - skipped bundler.`];
 }

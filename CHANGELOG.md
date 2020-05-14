@@ -1,8 +1,65 @@
 # Piral Changelog
 
-## 0.11.0 (tbd)
+## 0.11.5 (tbd)
 
+* Fixed bug in pilet debug when touching files with CSS references
+* Added tutorial for the migration of existing applications (#180)
+* Added `piral-cli-parcel` plugin for Parcel integration (#125)
+* Fixed the source map offset in Parcel (#216)
+
+## 0.11.4 (May 6, 2020)
+
+* Fixed a bug in `piral-fetch` regarding unset `Content-Type`
+* Added testimonials on the homepage (#194)
+* Added support for Yarn and Pnpm (#203)
+* Added optional `--cacert` flag to `pilet publish` command (#204)
+* Fixed `NODE_ENV` mode of the emulator (#207)
+* Added `getProfile()` to [piral-oidc](./src/packages/piral-oidc/README.md) (#210)
+* Switched to relative paths for local Piral references
+* Added new package `siteless` for painless microfrontends
+* Added `reducers` option to `piral-feeds`
+* Improved options and typings of `piral-feeds`
+
+## 0.11.3 (April 24, 2020)
+
+* Fixed robustness of the declaration generation
+* Improved typings for declaring extensions (using `PiralCustomExtensionSlotMap`) (#197)
+* Added generic type for `PiralStoreDataEvent` (#198)
+* Fixed Parcel logger verbose mode switch on Windows (#199)
+* Documented the use of `regenerator-runtime` (#200)
+* Added optional meta data argument for `registerPage` (#201)
+
+## 0.11.2 (April 19, 2020)
+
+* Added new optional plugin `piral-blazor` for Blazor (#112)
+* Added tutorial on authentication in Piral (#182)
+* Improved scaffolding of files for pilets (#189)
+* Added app shell watching for pilet debug in monorepos (#190)
+* Fixed verbose logging on Windows (#192)
+* Fixed the returned type of the `piral-feeds` HOC (#193)
+* Improved the emulator package creation
+* Improved responsive layout check and re-set
+
+## 0.11.1 (April 8, 2020)
+
+* Improved naming of the extension slot component `key`
+* Improved display error when upload to the feed service failed
+* Fixed default version for `piral upgrade` command
+* Fixed potential timing issues with closing modals and notifications
+* Fixed bug in `pilet debug` with reload
+* Fixed missing file copy during pilet scaffolding and upgrade
+* Fixed missing files in the emulator package
+* Added `piral-oidc` plugin (#177)
+* Added `piral-oauth2` plugin (#178)
+* Added optional `--no-install` flag to `piral upgrade`
+* Added optional `--no-install` flag to `pilet upgrade`
+
+## 0.11.0 (April 1, 2020)
+
+* Documented the Piral CLI spec (#110)
+* Added support for import maps via `parcel-plugin-import-maps` (#124)
 * Switched to use `parcel-plugin-externals` in the Piral CLI (#126)
+* Included video links in the tutorials (#135)
 * Changed *package.json* metadata format (#136)
 * Documented Pilet package spec (#137)
 * Documented Feed Service API spec (#138)
@@ -11,10 +68,14 @@
 * Declared `PiletApi` and `Pilet` in `piral-base`
 * Switched to use `piral-base` as declaration root
 * Included implied schema for generated pilets (supporting `v:0` and `v:1`)
+* Added support for aliases prefixed with `@` (#170)
+* Provided third-party Piral CLI plugin for webpack (#171)
 * Improved logging and documented all message codes (#172)
+* Added missing option for customer fetcher (#176)
 * Added new optional plugin `piral-redux` for Redux integration
 * Use `dets` for declaration generation of Piral instances
-* Updated dependencies
+* Updated multiple dependencies
+* Added new `piral upgrade` command to patch Piral instances
 
 ## 0.10.9 (February 28, 2020)
 

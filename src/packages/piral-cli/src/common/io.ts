@@ -2,25 +2,14 @@ import * as glob from 'glob';
 import * as rimraf from 'rimraf';
 import { transpileModule, ModuleKind, ModuleResolutionKind, ScriptTarget, JsxEmit } from 'typescript';
 import { join, resolve, basename, dirname, extname, isAbsolute, sep } from 'path';
-import {
-  writeFile,
-  readFile,
-  readdir,
-  copyFile,
-  constants,
-  exists,
-  mkdir,
-  lstat,
-  unlink,
-  mkdirSync,
-  statSync,
-} from 'fs';
+import { exists, mkdir, lstat, unlink, mkdirSync, statSync } from 'fs';
+import { writeFile, readFile, readdir, copyFile, constants } from 'fs';
 import { log } from './log';
 import { deepMerge } from './merge';
 import { nodeVersion } from './info';
 import { computeHash } from './hash';
+import { ForceOverwrite } from './enums';
 import { promptConfirm } from './interactive';
-import { ForceOverwrite } from '../types';
 
 function promptOverwrite(file: string) {
   const message = `The file ${file} exists already. Do you want to overwrite it?`;
@@ -62,6 +51,16 @@ function isFile(file: string) {
 function isLegacy() {
   const parts = nodeVersion.split('.');
   return +parts[0] < 10 || (+parts[0] === 10 && +parts[1] < 12);
+}
+
+export async function removeAny(target: string) {
+  const isDir = await checkIsDirectory(target);
+
+  if (isDir) {
+    await removeDirectory(target);
+  } else {
+    await removeFile(target);
+  }
 }
 
 export function removeDirectory(targetDir: string) {
@@ -117,7 +116,11 @@ export async function getEntryFiles(content: string, basePath: string) {
 
 export function checkExists(target: string) {
   return new Promise<boolean>(resolve => {
-    exists(target, resolve);
+    if (target !== undefined) {
+      exists(target, resolve);
+    } else {
+      resolve(false);
+    }
   });
 }
 
@@ -174,6 +177,7 @@ export async function matchFiles(baseDir: string, pattern: string) {
       {
         cwd: baseDir,
         absolute: true,
+        dot: true,
       },
       (err, files) => {
         if (err) {
@@ -297,8 +301,15 @@ export async function copy(source: string, target: string, forceOverwrite = Forc
   }
 }
 
+/**
+ * @deprecated Will be removed with v1. Please use "removeFile".
+ */
 export function remove(target: string) {
-  return new Promise((resolve, reject) => {
+  return removeFile(target);
+}
+
+export function removeFile(target: string) {
+  return new Promise<void>((resolve, reject) => {
     unlink(target, err => {
       if (err) {
         reject(err);
@@ -318,7 +329,7 @@ export async function move(source: string, target: string, forceOverwrite = Forc
   }
 
   await copy(source, target, forceOverwrite);
-  await remove(source);
+  await removeFile(source);
   return target;
 }
 

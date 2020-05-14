@@ -1,21 +1,16 @@
 import { join, dirname, resolve } from 'path';
 import { readKrasConfig, krasrc, buildKrasWithCli, defaultConfig } from 'kras';
-import { LogLevels } from '../types';
+import { callDebugPiralFromMonoRepo, callPiletDebug } from '../bundler';
+import { LogLevels, PiletSchemaVersion } from '../types';
 import {
   retrievePiletData,
-  setStandardEnvs,
-  postProcess,
   debugPiletApi,
   openBrowser,
   reorderInjectors,
   notifyServerOnline,
-  patchModules,
-  setupBundler,
   findEntryModule,
   defaultCacheDir,
   removeDirectory,
-  PiletSchemaVersion,
-  getPiletSchemaVersion,
   setLogLevel,
   progress,
 } from '../common';
@@ -32,7 +27,7 @@ export interface DebugPiletOptions {
   hmr?: boolean;
   autoInstall?: boolean;
   optimizeModules?: boolean;
-  schemaVersion?: 'v0' | 'v1';
+  schemaVersion?: PiletSchemaVersion;
 }
 
 export const debugPiletDefaults: DebugPiletOptions = {
@@ -52,7 +47,6 @@ export const debugPiletDefaults: DebugPiletOptions = {
 const injectorName = resolve(__dirname, '../injectors/pilet.js');
 
 async function getOrMakeAppDir(
-  baseDir: string,
   emulator: boolean,
   appFile: string,
   externals: Array<string>,
@@ -60,89 +54,19 @@ async function getOrMakeAppDir(
   logLevel: LogLevels,
 ) {
   if (!emulator) {
-    progress(`Preparing supplied Piral instance ...`);
-    const outDir = resolve(baseDir, 'dist', 'app');
     const packageJson = require.resolve(`${piral}/package.json`);
-    const root = resolve(packageJson, '..');
-    const original = process.cwd();
-    process.chdir(root);
-    setStandardEnvs({
-      root,
-      production: true,
-      debugPiral: true,
-      debugPilet: true,
-      dependencies: externals,
+    const cwd = resolve(packageJson, '..');
+    const { dir } = await callDebugPiralFromMonoRepo({
+      root: cwd,
+      externals,
       piral,
-    });
-    const appBundler = setupBundler({
-      type: 'piral',
       entryFiles: appFile,
-      config: {
-        watch: false,
-        minify: true,
-        sourceMaps: true,
-        contentHash: true,
-        publicUrl: './',
-        logLevel,
-        outDir,
-        cacheDir: resolve(root, defaultCacheDir),
-        scopeHoist: false,
-        hmr: false,
-        autoInstall: false,
-      },
+      logLevel,
     });
-    const bundle = await appBundler.bundle();
-    process.chdir(original);
-    return dirname(bundle.name);
+    return dir;
   }
 
   return dirname(appFile);
-}
-
-async function bundlePilet(
-  root: string,
-  piral: string,
-  hmr: boolean,
-  scopeHoist: boolean,
-  autoInstall: boolean,
-  cacheDir: string,
-  externals: Array<string>,
-  targetDir: string,
-  entryModule: string,
-  logLevel: LogLevels,
-  version: PiletSchemaVersion,
-) {
-  setStandardEnvs({
-    root,
-    piral,
-  });
-
-  const bundler = setupBundler({
-    type: 'pilet',
-    externals,
-    targetDir,
-    entryModule,
-    config: {
-      logLevel,
-      hmr: false,
-      minify: true,
-      watch: true,
-      scopeHoist,
-      publicUrl: './',
-      cacheDir,
-      autoInstall,
-    },
-  });
-
-  bundler.on('bundled', async bundle => {
-    await postProcess(bundle, version);
-
-    if (hmr) {
-      (bundler as any).emit('bundle-ready');
-    }
-  });
-
-  return bundler;
 }
 
 export async function debugPilet(baseDir = process.cwd(), options: DebugPiletOptions = {}) {
@@ -168,7 +92,6 @@ export async function debugPilet(baseDir = process.cwd(), options: DebugPiletOpt
   const { peerDependencies, root, appPackage, appFile, ignored, emulator } = await retrievePiletData(targetDir, app);
   const externals = Object.keys(peerDependencies);
   const cache = resolve(root, cacheDir);
-  const version = getPiletSchemaVersion(schemaVersion);
   const krasConfig = readKrasConfig({ port }, krasrc);
   const api = debugPiletApi;
 
@@ -177,12 +100,7 @@ export async function debugPilet(baseDir = process.cwd(), options: DebugPiletOpt
     await removeDirectory(cache);
   }
 
-  if (optimizeModules) {
-    progress('Preparing modules ...');
-    await patchModules(root, ignored);
-  }
-
-  const appDir = await getOrMakeAppDir(root, emulator, appFile, externals, appPackage.name, logLevel);
+  const appDir = await getOrMakeAppDir(emulator, appFile, externals, appPackage.name, logLevel);
 
   if (krasConfig.directory === undefined) {
     krasConfig.directory = join(targetDir, 'mocks');
@@ -204,19 +122,22 @@ export async function debugPilet(baseDir = process.cwd(), options: DebugPiletOpt
     krasConfig.injectors = defaultConfig.injectors;
   }
 
-  const bundler = await bundlePilet(
+  const bundler = await callPiletDebug({
     root,
-    appPackage.name,
+    piral: appPackage.name,
+    optimizeModules,
     hmr,
     scopeHoist,
     autoInstall,
-    cache,
+    cacheDir: cache,
     externals,
     targetDir,
     entryModule,
     logLevel,
-    version,
-  );
+    version: schemaVersion,
+    ignored,
+  });
+
   const injectorConfig = {
     active: true,
     bundler,

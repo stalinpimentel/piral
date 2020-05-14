@@ -4,14 +4,19 @@ import { useGlobalState } from '../hooks';
 import { defaultRender } from '../utils';
 import { ExtensionSlotProps } from '../types';
 
-export function ExtensionSlot<T = any>({ name, render = defaultRender, empty, params }: ExtensionSlotProps<T>) {
+export function ExtensionSlot<T extends string>({
+  name,
+  render = defaultRender,
+  empty,
+  params,
+}: ExtensionSlotProps<T>) {
   const extensions = useGlobalState(s => s.registry.extensions[name] || []);
   return render(
     extensions.length === 0 && isfunc(empty)
       ? [defaultRender(empty(), 'empty')]
-      : extensions.map(({ component: Component, defaults = {} }, i) => (
+      : extensions.map(({ component: Component, reference, defaults = {} }, i) => (
           <Component
-            key={`${Component.displayName || '_'}${i}`}
+            key={`${reference?.displayName || '_'}${i}`}
             params={{
               ...defaults,
               ...(params || {}),
@@ -20,4 +25,5 @@ export function ExtensionSlot<T = any>({ name, render = defaultRender, empty, pa
         )),
   );
 }
-(ExtensionSlot as React.FC<ExtensionSlotProps>).displayName = `ExtensionSlot`;
+
+ExtensionSlot.displayName = `ExtensionSlot`;

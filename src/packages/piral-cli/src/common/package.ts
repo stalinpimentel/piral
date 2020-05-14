@@ -1,11 +1,13 @@
 import { resolve, join, extname, basename, dirname, relative } from 'path';
 import { log, fail } from './log';
+import { unpackTarball } from './archive';
 import { getDevDependencies } from './language';
 import { cliVersion, coreExternals } from './info';
 import { checkAppShellCompatibility } from './compatibility';
 import { getHash, checkIsDirectory, matchFiles, getFileNames } from './io';
 import { readJson, copy, updateExistingJson, findFile, checkExists } from './io';
-import { Framework, PiletLanguage, ForceOverwrite, FileInfo, PiletsInfo, TemplateFileLocation } from '../types';
+import { PiletLanguage, ForceOverwrite } from './enums';
+import { Framework, FileInfo, PiletsInfo, TemplateFileLocation } from '../types';
 
 function getPiralPath(root: string, name: string) {
   return resolve(root, 'node_modules', name);
@@ -141,10 +143,22 @@ export function getPiralPackage(app: string, language: PiletLanguage, version: s
   };
 }
 
-function getAvailableFiles(root: string, name: string) {
+async function getAvailableFiles(root: string, name: string) {
   const source = getPiralPath(root, name);
+  log('generalDebug_0003', `Checking if "files.tar" exists in "${source}" ...`);
+  const exists = await checkExists(resolve(source, 'files.tar'));
+
+  if (exists) {
+    await unpackTarball(source, 'files.tar');
+  }
+
   log('generalDebug_0003', `Get matching files from "${source}".`);
-  return getMatchingFiles(resolve(source, 'files'), root, '**/*');
+  const base = resolve(source, 'files');
+  const files = await matchFiles(base, '**/*');
+  return files.map(file => ({
+    sourcePath: file,
+    targetPath: resolve(root, relative(base, file)),
+  }));
 }
 
 export async function getFileStats(root: string, name: string) {
@@ -273,7 +287,7 @@ function checkArrayOrUndefined(obj: Record<string, any>, key: string) {
   return undefined;
 }
 
-export async function findPackageVersion(rootPath: string, packageName: string) {
+export async function findPackageVersion(rootPath: string, packageName: string): Promise<string> {
   try {
     log('generalDebug_0003', `Finding the version of "${packageName}" in "${rootPath}".`);
     const moduleName = require.resolve(packageName, {

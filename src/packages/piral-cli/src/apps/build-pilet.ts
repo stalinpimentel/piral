@@ -1,18 +1,15 @@
 import { join, dirname, basename, resolve } from 'path';
-import { LogLevels } from '../types';
+import { LogLevels, PiletSchemaVersion } from '../types';
+import { callPiletBuild } from '../bundler';
 import {
-  setStandardEnvs,
-  postProcess,
   removeDirectory,
   findEntryModule,
   retrievePiletData,
-  patchModules,
-  setupBundler,
   defaultCacheDir,
-  getPiletSchemaVersion,
   setLogLevel,
   progress,
   logDone,
+  logInfo,
 } from '../common';
 
 export interface BuildPiletOptions {
@@ -28,7 +25,7 @@ export interface BuildPiletOptions {
   contentHash?: boolean;
   scopeHoist?: boolean;
   optimizeModules?: boolean;
-  schemaVersion?: 'v0' | 'v1';
+  schemaVersion?: PiletSchemaVersion;
 }
 
 export const buildPiletDefaults: BuildPiletOptions = {
@@ -70,51 +67,36 @@ export async function buildPilet(baseDir = process.cwd(), options: BuildPiletOpt
   const { peerDependencies, root, appPackage, ignored } = await retrievePiletData(targetDir, app);
   const externals = Object.keys(peerDependencies);
   const cache = resolve(root, cacheDir);
-  const version = getPiletSchemaVersion(schemaVersion);
-
-  const dest = {
-    outDir: dirname(resolve(baseDir, target)),
-    outFile: basename(target),
-  };
+  const outDir = dirname(resolve(baseDir, target));
 
   if (fresh) {
     progress('Removing output directory ...');
-    await removeDirectory(dest.outDir);
+    await removeDirectory(outDir);
   }
 
   await removeDirectory(cache);
 
-  if (optimizeModules) {
-    progress('Preparing modules ...');
-    await patchModules(root, ignored);
-  }
+  logInfo('Bundle pilet ...');
 
-  setStandardEnvs({
-    production: true,
-    piral: appPackage.name,
+  await callPiletBuild({
     root,
-  });
-
-  const bundler = setupBundler({
-    type: 'pilet',
+    piral: appPackage.name,
+    optimizeModules,
+    scopeHoist,
+    sourceMaps,
+    contentHash,
+    detailedReport,
+    minify,
+    cacheDir: cache,
     externals,
     targetDir,
+    outFile: basename(target),
+    outDir,
     entryModule,
-    config: {
-      ...dest,
-      cacheDir: cache,
-      watch: false,
-      sourceMaps,
-      minify,
-      scopeHoist,
-      contentHash,
-      publicUrl: './',
-      detailedReport,
-      logLevel,
-    },
+    logLevel,
+    version: schemaVersion,
+    ignored,
   });
 
-  const bundle = await bundler.bundle();
-  await postProcess(bundle, version);
-  logDone('Successfully built pilet!');
+  logDone('Pilet built successfully!');
 }

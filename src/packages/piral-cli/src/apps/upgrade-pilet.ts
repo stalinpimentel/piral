@@ -1,5 +1,5 @@
 import { resolve } from 'path';
-import { LogLevels, ForceOverwrite } from '../types';
+import { LogLevels, NpmClientType } from '../types';
 import {
   readJson,
   installPackage,
@@ -19,6 +19,9 @@ import {
   progress,
   fail,
   log,
+  logDone,
+  determineNpmClient,
+  ForceOverwrite,
 } from '../common';
 
 export interface UpgradePiletOptions {
@@ -26,6 +29,8 @@ export interface UpgradePiletOptions {
   target?: string;
   forceOverwrite?: ForceOverwrite;
   logLevel?: LogLevels;
+  install?: boolean;
+  npmClient?: NpmClientType;
 }
 
 export const upgradePiletDefaults: UpgradePiletOptions = {
@@ -33,6 +38,8 @@ export const upgradePiletDefaults: UpgradePiletOptions = {
   target: '.',
   forceOverwrite: ForceOverwrite.no,
   logLevel: LogLevels.info,
+  install: true,
+  npmClient: undefined,
 };
 
 export async function upgradePilet(baseDir = process.cwd(), options: UpgradePiletOptions = {}) {
@@ -41,6 +48,7 @@ export async function upgradePilet(baseDir = process.cwd(), options: UpgradePile
     target = upgradePiletDefaults.target,
     forceOverwrite = upgradePiletDefaults.forceOverwrite,
     logLevel = upgradePiletDefaults.logLevel,
+    install = upgradePiletDefaults.install,
   } = options;
   setLogLevel(logLevel);
   const root = resolve(baseDir, target);
@@ -51,6 +59,7 @@ export async function upgradePilet(baseDir = process.cwd(), options: UpgradePile
     fail('invalidPiletTarget_0040');
   }
 
+  const npmClient = await determineNpmClient(root, options.npmClient);
   const pckg = await readJson(root, 'package.json');
   const { devDependencies = {}, piral } = pckg;
 
@@ -67,12 +76,18 @@ export async function upgradePilet(baseDir = process.cwd(), options: UpgradePile
       fail('invalidPiralReference_0043');
     }
 
-    const [packageRef, packageVersion] = await getCurrentPackageDetails(baseDir, sourceName, currentVersion, version);
+    const [packageRef, packageVersion] = await getCurrentPackageDetails(
+      baseDir,
+      sourceName,
+      currentVersion,
+      version,
+      root,
+    );
     const originalFiles = await getFileStats(root, sourceName);
 
     progress(`Updating NPM package to %s ...`, packageRef);
 
-    await installPackage(packageRef, root, '--no-save', '--no-package-lock');
+    await installPackage(npmClient, packageRef, root, '--no-save');
 
     const piralInfo = await readPiralPackage(root, sourceName);
 
@@ -91,8 +106,10 @@ export async function upgradePilet(baseDir = process.cwd(), options: UpgradePile
     await patchPiletPackage(root, sourceName, packageVersion, piralInfo);
     await copyPiralFiles(root, sourceName, forceOverwrite, originalFiles);
 
-    progress(`Updating dependencies ...`);
-    await installDependencies(root, '--no-package-lock');
+    if (install) {
+      progress(`Updating dependencies ...`);
+      await installDependencies(npmClient, root);
+    }
 
     if (postUpgrade) {
       progress(`Running postUpgrade script ...`);
@@ -101,6 +118,7 @@ export async function upgradePilet(baseDir = process.cwd(), options: UpgradePile
     }
 
     await removeDirectory(cache);
+    logDone('Pilet upgraded successfully!');
   } else {
     fail('invalidPiletPackage_0041');
   }

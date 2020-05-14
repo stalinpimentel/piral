@@ -52,14 +52,14 @@ More information can be found in the [package information](https://npmjs.com/pac
 
 ## What about mono repos?
 
-Piral was developed to by used in distributed environments, where each pilet could be in its own repository. Nevertheless, for convenience and to get a head start we fully support the mono repo use case, too.
+Piral was developed to be used in distributed environments, where each pilet could be in its own repository. Nevertheless, for convenience and to get a head start we fully support the mono repo use case, too.
 
 We advise you to use the following tools:
 
 1. Yarn: `npm i yarn@1 -g`
 2. Lerna: `npm i lerna -g`
 
-To set up a mono repo we encourage you torun in your desired repository:
+To set up a mono repo we encourage you to run in your desired repository:
 
 1. Run `npx lerna init`
 2. Add `piral-cli` to `devDependencies`
@@ -72,5 +72,17 @@ To set up a mono repo we encourage you torun in your desired repository:
 9. Everything should just work as normal
 
 You can still create emulator packages of your app shell, which can be shipped to teams that do not (or cannot / should not) contribute to the mono repo.
+
+---------------------------------------
+
+## Something does not seem supported in an older browser?
+
+This can always be. We ship a module `piral/polyfills` that should bring compatibility even in IE11, however, this also makes some assumptions.
+
+While syntax constructs (e.g., `async` / `await`) should be transpiled fine, they sometimes depend also on runtime capabilities (e.g., `regenerator-runtime`). The `piral/polyfills` module delivers some helpers here, however, especially for API calls there may be no delivered polyfill.
+
+In such cases please find out what you use and which polyfill (additionally to `piral/polyfills`) is required.
+
+Finally, in cases where you target more modern browsers feel free to remove `piral/polyfills` from your imports. The intention of this module is not to cover all cases, but to cover the most important ones.
 
 ---------------------------------------
